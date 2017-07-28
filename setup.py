@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="webdriver_components",
-    version="0.0.4",
+    version="0.0.5",
     author="Andrew Magee",
     author_email="amagee@gmail.com",
     description="Webdriver_components",
@@ -16,6 +16,9 @@ setup(
         'selenium',
         'ordered_set',
     ],
+    setup_requires=[
+        'pytest-runner',
+    ],
     tests_require=[
         'pytest',
         'pyquery'
@@ -24,6 +27,8 @@ setup(
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3 :: Only",
         "Topic :: Utilities",
         "Topic :: Software Development :: Testing",
