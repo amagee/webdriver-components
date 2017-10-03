@@ -4,6 +4,7 @@ import platform
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
+from .utils import Nonlocals
 from ordered_set import OrderedSet
 import re
 
@@ -46,20 +47,20 @@ def get_elements(self, css=None, text=None):
     # two or more arguments. This is a bit over-convoluted for having only two
     # ways to query (css and text) but the pattern makes it easy to plug in
     # more ways.
-    items = None
+    #items = None
+    nonlocals = Nonlocals(items=None)
     def update(new_items):
-        nonlocal items
-        if items == None:
-            items = OrderedSet(new_items)
+        if nonlocals.items == None:
+            nonlocals.items = OrderedSet(new_items)
         else:
-            items = items & OrderedSet(new_items)
+            nonlocals.items = nonlocals.items & OrderedSet(new_items)
 
     if text is not None:
         update([e for e in get_elements(self, css="*") if e.text == text])
     if css is not None:
         update(self.find_elements_by_css_selector(css))
 
-    return items
+    return nonlocals.items
 
 
 def get_classes(self):
@@ -171,3 +172,7 @@ def _assert(val, msg=None):
     return True
 
 
+class Nonlocals(object):
+    """ Helper class to implement nonlocal names in Python 2.x """
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)

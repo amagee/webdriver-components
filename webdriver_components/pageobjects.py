@@ -1,9 +1,8 @@
 import functools
 from webdriver_components.utils import (retry_until_successful, retry_until_true, set_element_text,
-    get_element, get_elements)
+    get_element, get_elements, Nonlocals) 
 
-
-class PathItem:
+class PathItem(object):
     def __init__(self, factory=None, query_methods=None):
         self.factory = factory
         self.query_methods = query_methods or {}
@@ -75,13 +74,13 @@ def path_item_to_property(path_item):
     if isinstance(path_item, PathItem):
         def getter(self):
             attrs = {}
-            p1 = [*(self.path or []), path_item]
+            p1 = (self.path or []) + [path_item]
             if not path_item.multiple and path_item.factory is not None:
-                attrs = {**attrs, **path_item.factory().__dict__}
+                attrs.update(path_item.factory().__dict__)
                 
             for query_method_name, query_method in path_item.query_methods.items():
                 def method(self, query_method_name, query_method, **kwargs):
-                    return ElementQuery(self.driver, [*p1, CustomPathItem(query_method_name, query_method, kwargs)])
+                    return ElementQuery(self.driver, p1 + [CustomPathItem(query_method_name, query_method, kwargs)])
                 attrs[query_method_name] = (lambda query_method_name, query_method: (
                     lambda self, **kwargs: method(self, query_method_name, query_method, **kwargs)
                 ))(query_method_name, query_method)
@@ -103,7 +102,9 @@ class ElementQueryMetaclass(type):
         )
 
 
-class ElementQuery(metaclass=ElementQueryMetaclass):
+class ElementQuery(object):
+    __metaclass__ = ElementQueryMetaclass
+
     def __init__(self, driver, path):
         self.driver = driver
         self.path = path
@@ -117,13 +118,14 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         else:
             klass = ElementQuery
 
-        return klass(self.driver, [
-            *self.path,
-            IndexPathItem(
-                index, 
-                factory=self.path[-1].factory if self.path else None
-            )
-        ])
+        return klass(self.driver, 
+            self.path + [
+                IndexPathItem(
+                    index, 
+                    factory=self.path[-1].factory if self.path else None
+                )
+            ]
+        )
 
     def __iter__(self):
         return iter(self.get_el())
@@ -135,13 +137,12 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         return el
 
     def get_el(self):
-        el = None
+        nonlocals = Nonlocals(el=None)
         def get():
-            nonlocal el
-            el = self._get_el()
-            return (el is not None)
+            nonlocals.el = self._get_el()
+            return (nonlocals.el is not None)
         retry_until_true(get)
-        return el
+        return nonlocals.el
 
     def click(self):
         retry_until_successful(lambda: self.get_el().click())
@@ -187,7 +188,9 @@ class ComponentMetaclass(type):
         return super(ComponentMetaclass, cls).__new__(cls, name, bases, attrs)
 
 
-class Component(metaclass=ComponentMetaclass):
+class Component(object):
+    __metaclass__ = ComponentMetaclass
+
     def __init__(self, driver, path=None, el=None):
         self.driver = driver
         self.path = path
