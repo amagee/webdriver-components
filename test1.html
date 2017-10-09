@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="" type="text/css"></link> 
+    <style type="text/css">
+    </style>
+  </head>
+  <body>
+    <div id="login-form">
+      <div>
+        <div>
+          Email <input class="login-widget__email-input" />
+        </div>
+        <div>
+          Password <input type="password" class="login-widget__password-input" />
+        </div>
+      </div>
+      
+      <div class="list-item">
+        item 1
+      </div>
+      <div class="list-item">
+        item 2
+      </div>
+      <div class="list-item">
+        item 3
+      </div>
+
+      <div>
+        <button id="increment-counter-button">
+          Increment counter
+        </button>
+        <span id="counter">
+          0
+        </span>
+      </div>
+
+      <div>
+        <input id="text-input" type="text" value="initial-value">
+      </div>
+
+      <div>
+        <input type="checkbox" id="checkbox" checked>
+      </div>
+
+      <div>
+        <table id="table">
+          <tbody>
+            <tr>
+              <td>
+                Row 1 cell 1
+              </td>
+              <td>
+                Row 1 cell 2
+              </td>
+              <td>
+                Row 1 cell 3
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Row 2 cell 1
+              </td>
+              <td>
+                Row 2 cell 2
+              </td>
+              <td>
+                Row 2 cell 3
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <script>
+      window.onload = function() {
+        var counter = 0;
+        document.getElementById('increment-counter-button').addEventListener('click', function() {
+          document.getElementById('counter').innerHTML = (++counter).toString();
+        });
+      }
+    </script>
+  </body>
+</html>
+
