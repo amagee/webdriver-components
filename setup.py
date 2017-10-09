@@ -2,8 +2,8 @@ import os
 from setuptools import setup
 
 setup(
-    name="webdriver_components",
-    version="0.0.5",
+    name="webdriver_components-py2",
+    version="0.0.6",
     author="Andrew Magee",
     author_email="amagee@gmail.com",
     description="Webdriver_components",

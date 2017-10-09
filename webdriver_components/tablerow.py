@@ -45,13 +45,10 @@ class TableRowMetaclass(ComponentMetaclass):
         def cell_prop_name(cell_name):
             return cell_name + '_cell'
 
-        attrs = {
-            **attrs,
-            **({
-                cell_prop_name(name): Css("td:nth-child({})".format(i + 1))
-                for i, name in enumerate(cell_names)
-            })
-        }
+        attrs.update(**({
+	    cell_prop_name(name): Css("td:nth-child({})".format(i + 1))
+    	    for i, name in enumerate(cell_names)
+        }))
 
         def getter(self, cell_prop_name):
             return getattr(self, cell_prop_name).text.strip()
@@ -67,7 +64,7 @@ class TableRowMetaclass(ComponentMetaclass):
         return super(TableRowMetaclass, mcl).__new__(mcl, name, bases, attrs)
 
 
-class TableRow(Component, metaclass=TableRowMetaclass):
-    pass
+class TableRow(Component):
+    __metaclass__ = TableRowMetaclass
 
 

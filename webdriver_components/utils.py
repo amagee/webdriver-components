@@ -4,7 +4,6 @@ import platform
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from .utils import Nonlocals
 from ordered_set import OrderedSet
 import re
 

@@ -4,6 +4,7 @@ from webdriver_components.pageobjects import Component, Css
 from webdriver_components.testutils import start_daemon_thread, LocalDriver, DummyDriver
 from webdriver_components.utils import retry_until_true, monkeypatch_webdriver_objects
 from webdriver_components.tablerow import TableRow
+from .utils import Nonlocals
 
 
 class LoginPage(Component):
@@ -146,11 +147,10 @@ def test_waiting_for_el():
     """)
 
     l = LoginPage(driver=driver)
-    email_input = None
+    nonlocals = Nonlocals(email_input=None)
 
     def get_element():
-        nonlocal email_input
-        email_input = l.login_form.email_input.get_el()
+        nonlocals.email_input = l.login_form.email_input.get_el()
 
     def load_page():
         driver.set_html("""
@@ -164,7 +164,7 @@ def test_waiting_for_el():
     t2 = start_daemon_thread(target=load_page)
 
     t1.join()
-    assert email_input is not None
+    assert nonlocals.email_input is not None
 
 
 def test_selenium(local_driver):
