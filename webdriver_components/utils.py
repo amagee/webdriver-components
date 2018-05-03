@@ -1,5 +1,5 @@
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 import platform
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -149,21 +149,35 @@ def set_element_text(el, text, expected_text=None, defocus=False):
     retry_until_successful(_set_text)
 
 
-def retry_until_successful(func, num_retries=20, delay_ms=200):
-    max_time_s = num_retries * delay_ms / 1000
+def retry_until_successful(func, num_retries=None, delay_ms=200, timeout_ms=5000):
+    if timeout_ms is not None:
+        timeout_delta = timedelta(milliseconds=timeout_ms)
+    elif num_retries is not None:
+        timeout_delta = timedelta(milliseconds=num_retries * delay_ms)
+    else:
+        timeout_delta = None
+
     start_time = datetime.now()
-    for i in range(0, num_retries):
+    retry_num = 0
+    while True:
         try:
             return func()
         except Exception as e:
             print(e)
-            if (datetime.now() - start_time).total_seconds() >= max_time_s or i == num_retries - 1:
+            if ((num_retries is not None and retry_num >= num_retries - 1) 
+                    or (timeout_delta is not None and (datetime.now() - start_time) > timeout_delta)):
                 raise
+            retry_num += 1
             sleep(delay_ms / 1000)
 
 
-def retry_until_true(func, num_retries=20, delay_ms=200):
-    retry_until_successful(lambda: _assert(func()), num_retries=num_retries, delay_ms=delay_ms)
+def retry_until_true(func, num_retries=None, delay_ms=200, timeout_ms=5000):
+    retry_until_successful(
+        lambda: _assert(func()),
+        num_retries=num_retries,
+        delay_ms=delay_ms,
+        timeout_ms=timeout_ms
+    )
 
 
 def _assert(val, msg=None):
