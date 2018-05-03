@@ -180,6 +180,27 @@ def retry_until_true(func, num_retries=None, delay_ms=200, timeout_ms=5000):
     )
 
 
+class Poller:
+    def __init__(self, num_retries=None, delay_ms=200, timeout_ms=5000):
+        self.num_retries = num_retries
+        self.delay_ms = delay_ms
+        self.timeout_ms = timeout_ms
+
+
+    def retry_until_successful(self, func, **kwargs):
+        retry_until_successful(func, **self._get_timeout_params(**kwargs))
+
+    def retry_until_true(self, func, **kwargs):
+        retry_until_true(func, **self._get_timeout_params(**kwargs))
+
+    def _get_timeout_params(self, **kwargs):
+        return {
+            'num_retries': kwargs.get('num_retries', self.num_retries),
+            'delay_ms': kwargs.get('delay_ms', self.delay_ms),
+            'timeout_ms': kwargs.get('timeout_ms', self.timeout_ms)
+        }
+
+
 def _assert(val, msg=None):
     assert val, msg
     return True

@@ -134,17 +134,17 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
             el = p.get_element(el)
         return el
 
-    def get_el(self):
+    def get_el(self, **kwargs):
         el = None
         def get():
             nonlocal el
             el = self._get_el()
             return (el is not None)
-        retry_until_true(get)
+        self._retry_until_true(get, **kwargs)
         return el
 
-    def click(self):
-        retry_until_successful(lambda: self.get_el().click())
+    def click(self, **kwargs):
+        self._retry_until_successful(lambda: self.get_el().click(), **kwargs)
 
     @property
     def text(self):
@@ -173,6 +173,17 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         if self.is_checked != is_checked:
             self.get_el().click()
 
+    def _retry_until_successful(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_successful(func, **kwargs)
+        else:
+            retry_until_successful(func, **kwargs)
+
+    def _retry_until_true(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_true(func, **kwargs)
+        else:
+            retry_until_true(func, **kwargs)
 
 
 class ComponentMetaclass(type):
