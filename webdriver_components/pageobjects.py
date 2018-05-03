@@ -140,11 +140,11 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
             nonlocal el
             el = self._get_el()
             return (el is not None)
-        self._retry_until_true(get, **kwargs)
+        self.retry_until_true(get, **kwargs)
         return el
 
     def click(self, **kwargs):
-        self._retry_until_successful(lambda: self.get_el().click(), **kwargs)
+        self.retry_until_successful(lambda: self.get_el().click(), **kwargs)
 
     @property
     def text(self):
@@ -173,13 +173,13 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         if self.is_checked != is_checked:
             self.get_el().click()
 
-    def _retry_until_successful(self, func, **kwargs):
+    def retry_until_successful(self, func, **kwargs):
         if hasattr(self.driver, 'poller'):
             self.driver.poller.retry_until_successful(func, **kwargs)
         else:
             retry_until_successful(func, **kwargs)
 
-    def _retry_until_true(self, func, **kwargs):
+    def retry_until_true(self, func, **kwargs):
         if hasattr(self.driver, 'poller'):
             self.driver.poller.retry_until_true(func, **kwargs)
         else:
@@ -215,3 +215,15 @@ class Component(metaclass=ComponentMetaclass):
 
     def find_elements_by_css_selector(self, css):
         return self.get_elements(css=css)
+
+    def retry_until_successful(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_successful(func, **kwargs)
+        else:
+            retry_until_successful(func, **kwargs)
+
+    def retry_until_true(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_true(func, **kwargs)
+        else:
+            retry_until_true(func, **kwargs)
