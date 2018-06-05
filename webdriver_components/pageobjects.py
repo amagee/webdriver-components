@@ -1,6 +1,6 @@
 import functools
 from webdriver_components.utils import (retry_until_successful, retry_until_true, set_element_text,
-    get_element, get_elements)
+    get_element, get_elements, ElementNotFound)
 
 
 class PathItem:
@@ -142,6 +142,17 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
             return (el is not None)
         self.retry_until_true(get, **kwargs)
         return el
+
+    def exists(self, **kwargs):
+        return self.get_el(**kwargs) is not None
+
+    def does_not_exist(self, **kwargs):
+        try:
+            self._get_el(**kwargs)
+        except ElementNotFound:
+            return True
+        else:
+            return False
 
     def click(self, **kwargs):
         self.retry_until_successful(lambda: self.get_el().click(), **kwargs)
