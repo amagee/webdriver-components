@@ -128,6 +128,9 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
     def __iter__(self):
         return iter(self.get_el())
 
+    def __len__(self):
+        return len(self.get_el())
+
     def _get_el(self):
         el = self.driver
         for p in self.path:
