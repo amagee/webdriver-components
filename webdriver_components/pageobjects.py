@@ -126,7 +126,11 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         ])
 
     def __iter__(self):
-        return iter(self.get_el())
+        def generator():
+            length = len(self.get_el())
+            for i in range(0, length):
+                yield self[i]
+        return iter(generator())
 
     def __len__(self):
         return len(self.get_el())
