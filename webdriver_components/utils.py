@@ -145,7 +145,7 @@ def set_element_text(el, text, expected_text=None, defocus=False):
             retry_until_successful(lambda: el.parent.execute_script("document.activeElement.blur()"))
 
         if expected_text is not None:
-            assert el.value.strip() == expected_text
+            assert el.get_attribute('value').strip() == expected_text
     retry_until_successful(_set_text)
 
 

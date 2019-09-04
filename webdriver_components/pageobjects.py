@@ -150,6 +150,13 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         self.retry_until_true(get, **kwargs)
         return el
 
+    def get(self, selector):
+        if isinstance(selector, str):
+            path = [Css(selector)]
+        elif not isinstance(path, Iterable):
+            path = [selector]
+        return ElementQuery(self.driver, [*self.path, *path])
+
     def exists(self, **kwargs):
         return self.get_el(**kwargs) is not None
 
