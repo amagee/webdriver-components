@@ -151,6 +151,13 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         return el
 
     def get(self, selector):
+        """
+        Return an ElementQuery based on the selector. All the following are equivalent: 
+
+        - self.get([Css(".mychild")])
+        - self.get(Css(".mychild"))
+        - self.get(".mychild")
+        """
         if isinstance(selector, str):
             path = [Css(selector)]
         elif not isinstance(path, Iterable):
@@ -240,6 +247,20 @@ class Component(metaclass=ComponentMetaclass):
 
     def find_elements_by_css_selector(self, css):
         return self.get_elements(css=css)
+
+    def get(self, selector):
+        """
+        Return an ElementQuery based on the selector. All the following are equivalent: 
+
+        - self.get([Css(".mychild")])
+        - self.get(Css(".mychild"))
+        - self.get(".mychild")
+        """
+        if isinstance(selector, str):
+            path = [Css(selector)]
+        elif not isinstance(path, Iterable):
+            path = [selector]
+        return ElementQuery(self.driver, path)
 
     def retry_until_successful(self, func, **kwargs):
         if hasattr(self.driver, 'poller'):

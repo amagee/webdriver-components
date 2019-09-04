@@ -72,6 +72,13 @@ interact with the page:
     form.first_name.set_text('Andrew')
     form.last_name.set_text('Magee')
 
+    # Note that the above is equivalent to:
+    # form.get(".first-name").set_text("Andrew") # etc
+    # or
+    # form.get(Css(".first-name")).set_text("Andrew") # etc
+    # or
+    # form.get([Css(".first-name")]).set_text("Andrew") # etc
+
     # And assert that we did it right:
     assert form.first_name.value == 'Andrew'
     assert form.last_name.value == 'Magee'
