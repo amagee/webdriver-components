@@ -150,7 +150,7 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         self.retry_until_true(get, **kwargs)
         return el
 
-    def get(self, selector):
+    def get(self, selector, multiple=False):
         """
         Return an ElementQuery based on the selector. All the following are equivalent: 
 
@@ -159,7 +159,7 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         - self.get(".mychild")
         """
         if isinstance(selector, str):
-            path = [Css(selector)]
+            path = [Css(selector, multiple=multiple)]
         elif not isinstance(path, Iterable):
             path = [selector]
         return ElementQuery(self.driver, [*self.path, *path])
@@ -258,7 +258,7 @@ class Component(metaclass=ComponentMetaclass):
         """
         if isinstance(selector, str):
             path = [Css(selector)]
-        elif not isinstance(path, Iterable):
+        elif not isinstance(selector, Iterable):
             path = [selector]
         return ElementQuery(self.driver, path)
 
