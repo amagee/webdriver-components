@@ -165,15 +165,15 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         return ElementQuery(self.driver, [*self.path, *path])
 
     def exists(self, **kwargs):
-        return self.get_el(**kwargs) is not None
+        try:
+            self._get_el(**({k: v for k, v in kwargs.items() if k != 'timeout_ms'}))
+        except ElementNotFound:
+            return False
+        else:
+            return True
 
     def does_not_exist(self, **kwargs):
-        try:
-            self._get_el(**kwargs)
-        except ElementNotFound:
-            return True
-        else:
-            return False
+        return not self.exists(**kwargs)
 
     def click(self, **kwargs):
         self.retry_until_successful(lambda: self.get_el().click(), **kwargs)

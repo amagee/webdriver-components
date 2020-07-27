@@ -24,6 +24,8 @@ class LoginPage(Component):
 
     table_rows = Css("#table tr", multiple=True, factory=lambda: MyTableRow)
 
+    nonexistent_item = Css("#this-does-not-exist")
+
 
 class MyTableRow(TableRow):
     cell_names = ('column1', 'column2', 'column3')
@@ -73,6 +75,15 @@ def test_multiple_elements():
     els = l.list_items.get_el()
     assert [el.text.strip() for el in els] == ['item 1', 'item 2', 'item 3']
 
+
+def test_exists_false():
+    l = LoginPage(driver=DummyDriver("""
+        <div id="login-form">
+            There's nothing here
+        </div>
+    """))
+
+    assert l.nonexistent_item.exists() is False
 
 
 @pytest.mark.parametrize('driver_type', ['dummy', 'real'])
