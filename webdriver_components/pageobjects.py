@@ -1,6 +1,7 @@
 import functools
 from webdriver_components.utils import (retry_until_successful, retry_until_true, set_element_text,
     get_element, get_elements, ElementNotFound)
+from collections.abc import Iterable
 
 
 class PathItem:
@@ -160,20 +161,20 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         """
         if isinstance(selector, str):
             path = [Css(selector, multiple=multiple)]
-        elif not isinstance(path, Iterable):
+        elif not isinstance(selector, Iterable):
             path = [selector]
-        return ElementQuery(self.driver, [*self.path, *path])
+        return ElementQuery(self.driver, [*(self.path or []), *path])
 
     def exists(self, **kwargs):
-        return self.get_el(**kwargs) is not None
+        try:
+            self._get_el(**({k: v for k, v in kwargs.items() if k != 'timeout_ms'}))
+        except ElementNotFound:
+            return False
+        else:
+            return True
 
     def does_not_exist(self, **kwargs):
-        try:
-            self._get_el(**kwargs)
-        except ElementNotFound:
-            return True
-        else:
-            return False
+        return not self.exists(**kwargs)
 
     def click(self, **kwargs):
         self.retry_until_successful(lambda: self.get_el().click(), **kwargs)
@@ -257,10 +258,10 @@ class Component(metaclass=ComponentMetaclass):
         - self.get(".mychild")
         """
         if isinstance(selector, str):
-            path = [Css(selector)]
+            selector = [Css(selector)]
         elif not isinstance(selector, Iterable):
-            path = [selector]
-        return ElementQuery(self.driver, path)
+            selector = [selector]
+        return ElementQuery(self.driver, [*(self.path or []), *selector])
 
     def retry_until_successful(self, func, **kwargs):
         if hasattr(self.driver, 'poller'):
