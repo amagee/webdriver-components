@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="webdriver_components",
-    version="0.15.0",
+    version="1.0.0",
     author="Andrew Magee",
     author_email="amagee@gmail.com",
     description="Webdriver_components",
