@@ -1,13 +1,12 @@
 import functools
 from webdriver_components.utils import (retry_until_successful, retry_until_true, set_element_text,
-    get_element, get_elements, ElementNotFound)
+    get_element, get_elements, ElementNotFound, MultipleElementsReturned)
 from collections.abc import Iterable
 
 
 class PathItem:
-    def __init__(self, factory=None, query_methods=None):
+    def __init__(self, factory=None):
         self.factory = factory
-        self.query_methods = query_methods or {}
 
 
 class Css(PathItem):
@@ -58,89 +57,56 @@ class IndexPathItem(PathItem):
         return isinstance(other, IndexPathItem) and other.index == self.index
 
 
-class CustomPathItem:
-    def __init__(self, name, func, func_kwargs, **kwargs):
-        super(CustomPathItem, self).__init__(**kwargs)
-        self.name = name
-        self.func = func
-        self.kwargs = func_kwargs
-
-    def __str__(self):
-        return "[{}={}]".format(self.name, self.kwargs)
-
-    def get_element(self, el):
-        return self.func(el, **self.kwargs)
-
-
-def path_item_to_property(path_item):
-    if isinstance(path_item, PathItem):
-        def getter(self):
-            attrs = {}
-            p1 = [*(self.path or []), path_item]
-            if not path_item.multiple and path_item.factory is not None:
-                attrs = {**attrs, **path_item.factory().__dict__}
-                
-            for query_method_name, query_method in path_item.query_methods.items():
-                def method(self, query_method_name, query_method, **kwargs):
-                    return ElementQuery(self.driver, [*p1, CustomPathItem(query_method_name, query_method, kwargs)])
-                attrs[query_method_name] = (lambda query_method_name, query_method: (
-                    lambda self, **kwargs: method(self, query_method_name, query_method, **kwargs)
-                ))(query_method_name, query_method)
-
-            return type('ElementQuery', (ElementQuery,), attrs)(self.driver, p1)
-        return property(functools.partial(getter))
-    else:
-        return path_item
-
-
-
-class ElementQueryMetaclass(type):
+class ComponentMetaclass(type):
     def __new__(cls, name, bases, attrs):
-        return super(ElementQueryMetaclass, cls).__new__(
-            cls, 
-            name, 
-            bases, 
-            {k: path_item_to_property(v) for k, v in attrs.items()}
-        )
+        def process_item(item):
+            if isinstance(item, PathItem):
+                def prop(self):
+                    if item.multiple and item.factory:
+                        klass = make_component_list_class(item.factory())
+                    elif item.multiple:
+                        klass = make_component_list_class(Component)
+                    elif item.factory:
+                        klass = item.factory()
+                    else:
+                        klass = Component
+                    return klass(self.driver, [*self.path, item])
+                return property(functools.partial(prop))
+            else:
+                return item
+
+        attrs = {k: process_item(v) for k, v in attrs.items()}
+        return super(ComponentMetaclass, cls).__new__(cls, name, bases, attrs)
 
 
-class ElementQuery(metaclass=ElementQueryMetaclass):
-    def __init__(self, driver, path):
-        self.driver = driver
+
+class PathNotFound(Exception):
+    def __init__(self, path):
         self.path = path
 
     def __str__(self):
-        return "/".join([str(p) for p in self.path])
+        return f"Couldn't find path {'/'.join([str(p) for p in self.path])}"
 
-    def __getitem__(self, index):
-        if self.path and self.path[-1].factory:
-            klass = self.path[-1].factory()
-        else:
-            klass = ElementQuery
 
-        return klass(self.driver, [
-            *self.path,
-            IndexPathItem(
-                index, 
-                factory=self.path[-1].factory if self.path else None
-            )
-        ])
+class PathHadMultipleElements(Exception):
+    def __init__(self, path):
+        self.path = path
 
-    def __iter__(self):
-        def generator():
-            length = len(self.get_el())
-            for i in range(0, length):
-                yield self[i]
-        return iter(generator())
+    def __str__(self):
+        return f"Unexpected multiple elements for path {'/'.join([str(p) for p in self.path])}"
 
-    def __len__(self):
-        return len(self.get_el())
 
+class ComponentMixin:
     def _get_el(self):
-        el = self.driver
-        for p in self.path:
-            el = p.get_element(el)
-        return el
+        try:
+            el = self.driver
+            for p in self.path:
+                el = p.get_element(el)
+            return el
+        except ElementNotFound:
+            raise PathNotFound(self.path)
+        except MultipleElementsReturned:
+            raise PathHadMultipleElements(self.path)
 
     def get_el(self, **kwargs):
         el = None
@@ -151,6 +117,44 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         self.retry_until_true(get, **kwargs)
         return el
 
+    def retry_until_successful(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_successful(func, **kwargs)
+        else:
+            retry_until_successful(func, **kwargs)
+
+    def retry_until_true(self, func, **kwargs):
+        if hasattr(self.driver, 'poller'):
+            self.driver.poller.retry_until_true(func, **kwargs)
+        else:
+            retry_until_true(func, **kwargs)
+
+    def exists(self, **kwargs):
+        try:
+            self._get_el(**({k: v for k, v in kwargs.items() if k != 'timeout_ms'}))
+        except PathNotFound:
+            return False
+        else:
+            return True
+
+    def does_not_exist(self, **kwargs):
+        return not self.exists(**kwargs)
+
+    @property
+    def is_checked(self):
+        return self.get_el().get_attribute('checked') == 'true'
+
+    def set_checkbox_value(self, is_checked):
+        if self.is_checked != is_checked:
+            self.get_el().click()
+
+
+
+class Component(ComponentMixin, metaclass=ComponentMetaclass):
+    def __init__(self, driver, path=None):
+        self.driver = driver
+        self.path = path or []
+
     def get(self, selector, multiple=False):
         """
         Return an ElementQuery based on the selector. All the following are equivalent: 
@@ -160,32 +164,15 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
         - self.get(".mychild")
         """
         if isinstance(selector, str):
-            path = [Css(selector, multiple=multiple)]
+            selector = [Css(selector, multiple=multiple)]
         elif not isinstance(selector, Iterable):
-            path = [selector]
-        return ElementQuery(self.driver, [*(self.path or []), *path])
+            selector = [selector]
 
-    def exists(self, **kwargs):
-        try:
-            self._get_el(**({k: v for k, v in kwargs.items() if k != 'timeout_ms'}))
-        except ElementNotFound:
-            return False
+        if selector[-1].multiple:
+            klass = make_component_list_class(Component)
         else:
-            return True
-
-    def does_not_exist(self, **kwargs):
-        return not self.exists(**kwargs)
-
-    def click(self, **kwargs):
-        self.retry_until_successful(lambda: self.get_el().click(), **kwargs)
-
-    @property
-    def text(self):
-        return self.get_el().text
-
-    @property
-    def value(self):
-        return self.get_el().get_attribute('value')
+            klass = Component
+        return klass(self.driver, [*self.path, *selector])
 
     def set_text(self, text, expected_text=None, defocus=False):
         """
@@ -198,79 +185,37 @@ class ElementQuery(metaclass=ElementQueryMetaclass):
             defocus=defocus
         )
 
+    def click(self, **kwargs):
+        self.retry_until_successful(lambda: self.get_el().click(), **kwargs)
+
     @property
-    def is_checked(self):
-        return self.get_el().get_attribute('checked') == 'true'
+    def text(self):
+        return self.get_el().text
 
-    def set_checkbox_value(self, is_checked):
-        if self.is_checked != is_checked:
-            self.get_el().click()
-
-    def retry_until_successful(self, func, **kwargs):
-        if hasattr(self.driver, 'poller'):
-            self.driver.poller.retry_until_successful(func, **kwargs)
-        else:
-            retry_until_successful(func, **kwargs)
-
-    def retry_until_true(self, func, **kwargs):
-        if hasattr(self.driver, 'poller'):
-            self.driver.poller.retry_until_true(func, **kwargs)
-        else:
-            retry_until_true(func, **kwargs)
+    @property
+    def value(self):
+        return self.get_el().get_attribute('value')
 
 
-class ComponentMetaclass(type):
-    def __new__(cls, name, bases, attrs):
-        def process_item(item):
-            if isinstance(item, PathItem):
-                return path_item_to_property(item)
-            else:
-                return item
 
-        attrs = {k: process_item(v) for k, v in attrs.items()}
-        return super(ComponentMetaclass, cls).__new__(cls, name, bases, attrs)
+def make_component_list_class(klass):
+    class ComponentList(ComponentMixin):
+        def __init__(self, driver, path=None):
+            self.driver = driver
+            self.path = path or []
+
+        def __getitem__(self, index):
+            return klass(self.driver, [*self.path, IndexPathItem(index)])
+
+        def __iter__(self):
+            def generator():
+                length = len(self.get_el())
+                for i in range(0, length):
+                    yield self[i]
+            return iter(generator())
+
+        def __len__(self):
+            return len(self.get_el())
+    return ComponentList
 
 
-class Component(metaclass=ComponentMetaclass):
-    def __init__(self, driver, path=None, el=None):
-        self.driver = driver
-        self.path = path
-        self.el = el
-
-    def __str__(self):
-        return "/".join([str(p) for p in self.path])
-
-    def get_element(self, **kwargs): 
-        return get_element(self.el, **kwargs) 
- 
-    def get_elements(self, **kwargs): 
-        return get_elements(self.el, **kwargs) 
-
-    def find_elements_by_css_selector(self, css):
-        return self.get_elements(css=css)
-
-    def get(self, selector):
-        """
-        Return an ElementQuery based on the selector. All the following are equivalent: 
-
-        - self.get([Css(".mychild")])
-        - self.get(Css(".mychild"))
-        - self.get(".mychild")
-        """
-        if isinstance(selector, str):
-            selector = [Css(selector)]
-        elif not isinstance(selector, Iterable):
-            selector = [selector]
-        return ElementQuery(self.driver, [*(self.path or []), *selector])
-
-    def retry_until_successful(self, func, **kwargs):
-        if hasattr(self.driver, 'poller'):
-            self.driver.poller.retry_until_successful(func, **kwargs)
-        else:
-            retry_until_successful(func, **kwargs)
-
-    def retry_until_true(self, func, **kwargs):
-        if hasattr(self.driver, 'poller'):
-            self.driver.poller.retry_until_true(func, **kwargs)
-        else:
-            retry_until_true(func, **kwargs)

@@ -163,10 +163,10 @@ def retry_until_successful(func, num_retries=None, delay_ms=200, timeout_ms=5000
         try:
             return func()
         except Exception as e:
-            print(e)
             if ((num_retries is not None and retry_num >= num_retries - 1) 
                     or (timeout_delta is not None and (datetime.now() - start_time) > timeout_delta)):
                 raise
+            print(e, "; retrying")
             retry_num += 1
             sleep(delay_ms / 1000)
 
