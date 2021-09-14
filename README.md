@@ -73,7 +73,7 @@ need to know about the internal structure of a `Todo`. We can also use it
 whereever todo lists might appear. If we decide to have two todo lists, we can
 just update the page:
 
-```
+```python
 class Page(Component):
     fun_todo_list = Css(".fun-todo-list", factory=TodoList)
     boring_todo_list = Css(".boring-todo-list", factory=TodoList)
@@ -81,7 +81,7 @@ class Page(Component):
 
 Or we can have todo lists on separate pages:
 
-```
+```python
 class FunPage(Component):
     todo_list = Css(".todo-list", factory=TodoList)
 
@@ -199,7 +199,7 @@ assert form.last_name.value == 'Magee'
 But we don't have to have just one name on a page. Let's make our top-level
 element instead be a component that has two NameForms:
 
-```
+```python
 class MultipleNameForms(Component):
     # Note that the `factory` parameter is a callable that returns the
     # `Component`-subclass we want. This is so we can define the sub-components
